@@ -40,7 +40,7 @@ A complete receipt scanning web application that works out of the box. Upload ph
 
 ### Instant Development Setup
 ```bash
-git clone <your-repo>
+git clone https://github.com/imag0/receiptReader.git
 cd ReceiptWrapper
 npm install
 npm run dev
