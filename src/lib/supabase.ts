@@ -1,25 +1,22 @@
 import { createClient } from '@supabase/supabase-js'
 import { createBrowserClient } from '@supabase/ssr'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-// Browser client (for client-side operations)
-export const supabase = createBrowserClient(supabaseUrl, supabaseAnonKey)
+// Expose a flag to indicate whether Supabase is configured
+export const hasSupabase = Boolean(supabaseUrl && supabaseAnonKey)
 
-// Server client (for server-side operations with service role)
-export const supabaseAdmin = createClient(
-  supabaseUrl,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
-    }
-  }
-)
-
-// Database types
+// Only create the browser client when env vars exist to avoid runtime errors
+export const supabase = hasSupabase
+  ? createBrowserClient(supabaseUrl as string, supabaseAnonKey as string)
+  : (null as unknown as ReturnType<typeof createBrowserClient>) // Only create the admin client when service role key is present (server-side only usage)
+const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+export const supabaseAdmin = serviceRoleKey && supabaseUrl
+  ? createClient(supabaseUrl as string, serviceRoleKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    })
+  : (null as unknown as ReturnType<typeof createClient>) // Database types
 export interface UserProfile {
   id: string
   email: string
