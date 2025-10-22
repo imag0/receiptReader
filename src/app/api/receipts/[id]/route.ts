@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
+import { createServerClient, type CookieOptions } from '@supabase/ssr'
+import { cookies } from 'next/headers'
 import { db } from '@/lib/database'
 
 export async function PUT(
@@ -7,23 +8,30 @@ export async function PUT(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession()
+    const cookieStore = await cookies()
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return cookieStore.get(name)?.value
+          },
+        },
+      }
+    )
+
+    const { data: { user } } = await supabase.auth.getUser()
     
-    if (!session?.user?.email) {
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const { id: receiptId } = await context.params
     const updateData = await request.json()
 
-    // Get user from database
-    const user = await db.getUserByEmail(session.user.email)
-    if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
-    }
-
     // Verify receipt belongs to user
-    const receipts = await db.getUserReceipts(user.id)
+    const receipts = await db.getReceipts(user.id)
     const receipt = receipts.find((r: any) => r.id === receiptId)
     
     if (!receipt) {
@@ -49,22 +57,29 @@ export async function DELETE(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession()
+    const cookieStore = await cookies()
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return cookieStore.get(name)?.value
+          },
+        },
+      }
+    )
+
+    const { data: { user } } = await supabase.auth.getUser()
     
-    if (!session?.user?.email) {
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const { id: receiptId } = await context.params
 
-    // Get user from database
-    const user = await db.getUserByEmail(session.user.email)
-    if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
-    }
-
-    // Verify receipt belongs to user (if using real database)
-    const receipts = await db.getUserReceipts(user.id)
+    // Verify receipt belongs to user
+    const receipts = await db.getReceipts(user.id)
     const receipt = receipts.find((r: any) => r.id === receiptId)
     
     if (!receipt) {

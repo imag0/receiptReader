@@ -2,11 +2,13 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { useAuth } from '@/components/SupabaseAuthProvider'
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [message, setMessage] = useState('')
+  const { resetPassword } = useAuth()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -14,20 +16,12 @@ export default function ForgotPassword() {
     setMessage('')
 
     try {
-      const response = await fetch('/api/auth/forgot-password', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email }),
-      })
-
-      const data = await response.json()
+      const { error } = await resetPassword(email)
       
-      if (response.ok) {
-        setMessage('Password reset instructions have been sent to your email (demo mode - check console)')
+      if (error) {
+        setMessage(error.message || 'Something went wrong')
       } else {
-        setMessage(data.error || 'Something went wrong')
+        setMessage('Password reset instructions have been sent to your email')
       }
     } catch (error) {
       setMessage('Something went wrong. Please try again.')

@@ -1,21 +1,21 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useSession, signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { User, CreditCard, Trash2, ArrowLeft } from 'lucide-react'
+import { useAuth } from '@/components/SupabaseAuthProvider'
 
 export default function Settings() {
-  const { data: session, status } = useSession()
+  const { user, userProfile, loading, signOut } = useAuth()
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
   const [subscription, setSubscription] = useState<any>(null)
 
   useEffect(() => {
-    if (status === 'unauthenticated') {
+    if (!loading && !user) {
       router.push('/auth/signin')
     }
-  }, [status, router])
+  }, [loading, user, router])
 
   const handleUpgradeToPro = async () => {
     setIsLoading(true)
@@ -27,7 +27,7 @@ export default function Settings() {
         },
         body: JSON.stringify({
           priceId: 'price_1234567890', // Demo price ID
-          userId: session?.user.id
+          userId: user?.id
         }),
       })
 
@@ -61,7 +61,7 @@ export default function Settings() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          userId: session?.user.id
+          userId: user?.id
         }),
       })
 
@@ -94,7 +94,8 @@ export default function Settings() {
         },
       })
 
-      await signOut({ callbackUrl: '/' })
+      await signOut()
+      router.push('/')
     } catch (error) {
       console.error('Error:', error)
       alert('Something went wrong. Please try again.')
@@ -147,7 +148,7 @@ export default function Settings() {
                 <label className="block text-sm font-medium text-gray-700">Email</label>
                 <input
                   type="email"
-                  value={session?.user.email || ''}
+                  value={user?.email || ''}
                   disabled
                   className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-500"
                 />
@@ -156,16 +157,16 @@ export default function Settings() {
                 <label className="block text-sm font-medium text-gray-700">Plan</label>
                 <div className="mt-1 flex items-center">
                   <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                    session?.user.subscription_tier === 'pro' 
+                    userProfile?.subscription_tier === 'pro' 
                       ? 'bg-blue-100 text-blue-800' 
                       : 'bg-gray-100 text-gray-800'
                   }`}>
-                    {session?.user.subscription_tier === 'pro' ? 'Pro' : 'Free'}
+                    {userProfile?.subscription_tier === 'pro' ? 'Pro' : 'Free'}
                   </span>
-                  {session?.user.subscription_tier === 'free' && (
+                  {userProfile?.subscription_tier === 'free' && (
                     <span className="ml-2 text-sm text-gray-500">5 receipts per month</span>
                   )}
-                  {session?.user.subscription_tier === 'pro' && (
+                  {userProfile?.subscription_tier === 'pro' && (
                     <span className="ml-2 text-sm text-gray-500">Unlimited receipts</span>
                   )}
                 </div>
@@ -183,7 +184,7 @@ export default function Settings() {
             </h2>
           </div>
           <div className="px-6 py-4">
-            {session?.user.subscription_tier === 'free' ? (
+            {userProfile?.subscription_tier === 'free' ? (
               <div className="text-center py-6">
                 <h3 className="text-lg font-medium text-gray-900 mb-2">Upgrade to Pro</h3>
                 <p className="text-gray-600 mb-4">

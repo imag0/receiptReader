@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { useAuth } from '@/components/SupabaseAuthProvider'
 
 export default function SignUp() {
   const [email, setEmail] = useState('')
@@ -10,7 +11,9 @@ export default function SignUp() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
+  const [success, setSuccess] = useState(false)
   const router = useRouter()
+  const { signUp } = useAuth()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -30,19 +33,14 @@ export default function SignUp() {
     }
 
     try {
-      const response = await fetch('/api/auth/signup', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password }),
-      })
+      const { error: signUpError } = await signUp(email, password)
 
-      if (response.ok) {
-        router.push('/auth/signin?message=Account created successfully')
+      if (signUpError) {
+        setError(signUpError.message || 'Something went wrong')
       } else {
-        const data = await response.json()
-        setError(data.error || 'Something went wrong')
+        setSuccess(true)
+        // Auto sign in after successful signup
+        router.push('/dashboard')
       }
     } catch (error) {
       setError('Something went wrong. Please try again.')

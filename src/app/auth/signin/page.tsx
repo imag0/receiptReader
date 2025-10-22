@@ -1,9 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { signIn } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { useAuth } from '@/components/SupabaseAuthProvider'
 
 export default function SignIn() {
   const [email, setEmail] = useState('')
@@ -11,6 +11,7 @@ export default function SignIn() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
   const router = useRouter()
+  const { signIn } = useAuth()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -18,13 +19,9 @@ export default function SignIn() {
     setError('')
 
     try {
-      const result = await signIn('credentials', {
-        email,
-        password,
-        redirect: false
-      })
+      const { error: signInError } = await signIn(email, password)
 
-      if (result?.error) {
+      if (signInError) {
         setError('Invalid email or password')
       } else {
         router.push('/dashboard')

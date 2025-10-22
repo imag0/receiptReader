@@ -1,23 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
 import { db } from '@/lib/database'
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession()
+    const cookieStore = await cookies()
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return cookieStore.get(name)?.value
+          },
+        },
+      }
+    )
+
+    const { data: { user } } = await supabase.auth.getUser()
     
-    if (!session?.user?.email) {
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Get user from database
-    const user = await db.getUserByEmail(session.user.email)
-    if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
-    }
-
     // Get user's receipts
-    const receipts = await db.getUserReceipts(user.id)
+    const receipts = await db.getReceipts(user.id)
 
     return NextResponse.json(receipts)
 
@@ -32,23 +40,36 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession()
+    const cookieStore = await cookies()
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return cookieStore.get(name)?.value
+          },
+        },
+      }
+    )
+
+    const { data: { user } } = await supabase.auth.getUser()
     
-    if (!session?.user?.email) {
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const receiptData = await request.json()
 
-    // Get user from database
-    const user = await db.getUserByEmail(session.user.email)
-    if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    // Get user profile from database
+    const userProfile = await db.getUser(user.id)
+    if (!userProfile) {
+      return NextResponse.json({ error: 'User profile not found' }, { status: 404 })
     }
 
     // Check subscription limits
-    if (user.subscription_tier === 'free') {
-      const receipts = await db.getUserReceipts(user.id)
+    if (userProfile.subscription_tier === 'free') {
+      const receipts = await db.getReceipts(user.id)
       if (receipts.length >= 5) {
         return NextResponse.json(
           { error: 'Free plan limit reached. Upgrade to Pro for unlimited receipts.' },

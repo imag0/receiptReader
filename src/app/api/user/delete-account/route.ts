@@ -1,23 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
 import { db } from '@/lib/database'
 
 export async function DELETE(request: NextRequest) {
   try {
-    const session = await getServerSession()
+    const cookieStore = await cookies()
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return cookieStore.get(name)?.value
+          },
+        },
+      }
+    )
+
+    const { data: { user } } = await supabase.auth.getUser()
     
-    if (!session?.user?.email) {
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Get user from database
-    const user = await db.getUserByEmail(session.user.email)
-
-    if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
-    }
-
-    // Delete user account (this will also delete receipts via our database client)
+    // Delete user account (this will cascade delete receipts and profile)
     await db.deleteUser(user.id)
 
     return NextResponse.json({ message: 'Account deleted successfully' })

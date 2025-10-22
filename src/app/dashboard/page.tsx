@@ -1,11 +1,11 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useDropzone } from 'react-dropzone'
 import { Upload, FileText, Download, Settings, Search, LogOut, Copy, Mail } from 'lucide-react'
 import EditReceiptModal from '@/components/EditReceiptModal'
+import { useAuth } from '@/components/SupabaseAuthProvider'
 
 interface Receipt {
   id: string
@@ -19,7 +19,7 @@ interface Receipt {
 }
 
 export default function Dashboard() {
-  const { data: session, status } = useSession()
+  const { user, userProfile, loading, signOut } = useAuth()
   const router = useRouter()
   const [receipts, setReceipts] = useState<Receipt[]>([])
   const [isUploading, setIsUploading] = useState(false)
@@ -29,17 +29,17 @@ export default function Dashboard() {
 
   // Redirect if not authenticated
   useEffect(() => {
-    if (status === 'unauthenticated') {
+    if (!loading && !user) {
       router.push('/auth/signin')
     }
-  }, [status, router])
+  }, [loading, user, router])
 
   // Load receipts on mount
   useEffect(() => {
-    if (session?.user) {
+    if (user) {
       loadReceipts()
     }
-  }, [session])
+  }, [user])
 
   const loadReceipts = async () => {
     try {
@@ -182,8 +182,9 @@ export default function Dashboard() {
     }
   }
 
-  const handleSignOut = () => {
-    router.push('/api/auth/signout')
+  const handleSignOut = async () => {
+    await signOut()
+    router.push('/')
   }
 
   if (status === 'loading' || isLoading) {
@@ -263,7 +264,7 @@ export default function Dashboard() {
             <h1 className="text-2xl font-bold text-gray-900">Receipt Scanner</h1>
             <div className="flex items-center space-x-4">
               <span className="text-sm text-gray-600">
-                {session?.user.subscription_tier === 'free' 
+                {userProfile?.subscription_tier === 'free' 
                   ? `Free Plan: ${receipts.length}/5 receipts` 
                   : 'Pro Plan: Unlimited'}
               </span>
