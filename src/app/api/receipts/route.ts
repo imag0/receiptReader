@@ -3,6 +3,7 @@ import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { db } from '@/lib/database'
 
+// Get all receipts for the authenticated user
 export async function GET(request: NextRequest) {
   try {
     const cookieStore = await cookies()
